@@ -24,7 +24,15 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 	u8 read_check_sum = 0;
 	u8 cal_check_sum = 0;
 
-	u8 buf_tail[6] = {0xFE,0xFD,0xFC,0xFB,0xFA,0xF9};
+	u8 buf_tail[6] = {0};
+	u8 address_buf[6] = {0x00,0x00,0x00,0x00,0x00,0x02};
+
+	buf_tail[0] = 0xFE;
+	buf_tail[1] = 0xFD;
+	buf_tail[2] = 0xFC;
+	buf_tail[3] = 0xFB;
+	buf_tail[4] = 0xFA;
+	buf_tail[5] = 0xF9;
 
 	pos1 = MyStrstr(buf,buf_tail,len,6);
 
@@ -44,119 +52,126 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 			*(buf + 7) == 0x68 && \
 			*(buf + pos1 - 1) == 0x16)							//判断包头和包尾
 		{
-			read_check_sum = *(buf + pos1 - 2);					//获取校验和
-			cal_check_sum = CalCheckSum(buf, pos1 - 2);			//计算校验和
-
-			if(read_check_sum == cal_check_sum)
+			if(MyStrstr(buf + 1,address_buf,6,6) != 0xFFFF)
 			{
-				if(area_id == 0xFF && box_id == 0xFF)
-				{
-					if(DeviceUUID != NULL)
-					{
-						got_uuid = MyStrstr(uuid,DeviceUUID,len - 10,UU_ID_LEN - 2);
+				read_check_sum = *(buf + pos1 - 2);					//获取校验和
+				cal_check_sum = CalCheckSum(buf, pos1 - 2);			//计算校验和
 
-						if(got_uuid == 0xFFFF)
+				if(read_check_sum == cal_check_sum)
+				{
+					if(area_id == 0xFF && box_id == 0xFF)
+					{
+						if(DeviceUUID != NULL)
 						{
-							for(i = 0; i < 17; i ++)
+							got_uuid = MyStrstr(uuid,DeviceUUID,len - 10,UU_ID_LEN - 2);
+
+							if(got_uuid == 0xFFFF)
 							{
-								*(uuid + i) = *(uuid + i) + 0x30;
+								for(i = 0; i < 17; i ++)
+								{
+									*(uuid + i) = *(uuid + i) + 0x30;
+								}
+
+								got_uuid = MyStrstr(uuid,DeviceUUID,len - 10,UU_ID_LEN - 2);
+							}
+							else
+							{
+								uuid_type = 1;
 							}
 
-							got_uuid = MyStrstr(uuid,DeviceUUID,len - 10,UU_ID_LEN - 2);
-						}
-						else
-						{
-							uuid_type = 1;
-						}
-
-						if(got_uuid == 0xFFFF)
-						{
-							return 0;
-						}
-						else
-						{
-							response = 1;
+							if(got_uuid == 0xFFFF)
+							{
+								return 0;
+							}
+							else
+							{
+								response = 1;
+							}
 						}
 					}
-				}
-				else if((area_id == DeviceAreaID && box_id == DeviceBoxID) ||
-						(area_id == DeviceAreaID && box_id == 0xFE) ||
-						(area_id == 0xFE && box_id == 0xFE))
-				{
-					response = 2;
-				}
-				else
-				{
-					return 0;
-				}
-
-				if(response != 0)
-				{
-					switch(cmd_code)
+					else if((area_id == DeviceAreaID && box_id == DeviceBoxID) ||
+							(area_id == DeviceAreaID && box_id == 0xFE) ||
+							(area_id == 0xFE && box_id == 0xFE))
 					{
-						case 0xD0:									//发送固定信息(心跳)，上行
-							ret = UpdateRelayModeInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+						response = 2;
+					}
+					else
+					{
+						return 0;
+					}
 
-						case 0xD1:									//控制继电器开闭状态
-							ret = ControlRelayState(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+					if(response != 0)
+					{
+						switch(cmd_code)
+						{
+							case 0xD0:									//发送固定信息(心跳)，上行
+								ret = UpdateRelayModeInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD2:									//重启设备
-							ret = ControlDeviceReset(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD1:									//控制继电器开闭状态
+								ret = ControlRelayState(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD3:									//设置定时发送间隔,下行
-							ret = SetDeviceUpLoadINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD2:									//重启设备
+								ret = ControlDeviceReset(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD4:									//读取/发送信息
-							ret = ReadDeviceInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD3:									//设置定时发送间隔,下行
+								ret = SetDeviceUpLoadINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD5:									//从服务器获取时间
-							ret = GetTimeDateFromServer(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD4:									//读取/发送信息
+								ret = ReadDeviceInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD6:									//设置继电器定时策略，下行
-							ret = SetRegularTimeGroups(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD5:									//从服务器获取时间
+								ret = GetTimeDateFromServer(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD7:									//设置设备工作模式
-							ret = SetDeviceWorkMode(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD6:									//设置继电器定时策略，下行
+								ret = SetRegularTimeGroups(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD8:									//设置定时发送间隔,下行
-							ret = SetRelayActionINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD7:									//设置设备工作模式
+								ret = SetDeviceWorkMode(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xD9:									//设置定时发送间隔,下行
-							ret = SetRS485BuarRate(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD8:									//设置定时发送间隔,下行
+								ret = SetRelayActionINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xDA:									//设置逻辑区和物理区,下行
-							ret = SetAreaID_BoxID(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xD9:									//设置定时发送间隔,下行
+								ret = SetRS485BuarRate(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xDB:									//设置逻辑区和物理区,下行
-							ret = SetUpdateFirmWareInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xDA:									//设置逻辑区和物理区,下行
+								ret = SetAreaID_BoxID(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xDC:									//设置逻辑区和物理区,下行
-							ret = WriteFrameWareBags(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xDB:									//设置逻辑区和物理区,下行
+								ret = SetUpdateFirmWareInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0xDD:									//设置位置信息
-							ret = SetPosition(cmd_code,data,data_len,outbuf,response,uuid_type);
-						break;
+							case 0xDC:									//设置逻辑区和物理区,下行
+								ret = WriteFrameWareBags(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						case 0x80:									//应答，下行,上行在别处处理
-							UnPackAckPacket(cmd_code,data,data_len);
-						break;
+							case 0xDD:									//设置位置信息
+								ret = SetPosition(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
+							
+							case 0xDE:									//设置位置信息
+								ret = GetRegularTimeGroups(cmd_code,data,data_len,outbuf,response,uuid_type);
+							break;
 
-						default:									//此处要给云端应答一个功能码错误信息
+							case 0x80:									//应答，下行,上行在别处处理
+								UnPackAckPacket(cmd_code,data,data_len);
+							break;
 
-						break;
+							default:									//此处要给云端应答一个功能码错误信息
+
+							break;
+						}
 					}
 				}
 			}
@@ -221,7 +236,6 @@ u16 UpdateRelayModeInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_typ
 //控制继电器开闭
 u16 ControlRelayState(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
-	u8 i = 0;
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
 	u16 bit = 0;
@@ -236,11 +250,8 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 		bit = ((u16)(*(buf + 0)) << 8) + (*(buf + 1));
 		state = ((u16)(*(buf + 2)) << 8) + (*(buf + 3));
 
-		if(bit <= 0x0FFF && state <= 0x0FFF)
-		{
-//			OutPutControlBit = bit;
-//			OutPutControlState = state;
-
+//		if(bit <= 0x0FFF && state <= 0x0FFF)
+//		{
 			relay_state = bit;
 			relay_state = relay_state << 16;
 			relay_state = relay_state + state;
@@ -252,27 +263,12 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 #endif
 			}
 
-			for(i = 0; i < CH_NUM; i ++)
-			{
-				if(bit & (1 << i))
-				{
-					if(state & (1 << i))
-					{
-						RelaysState |= (1 << i);
-					}
-					else
-					{
-						RelaysState &= ~(1 << i);
-					}
-				}
-			}
-
 			HaveNewActionCommand = 1;
-		}
-		else
-		{
-			data_buf[1] = 1;
-		}
+//		}
+//		else
+//		{
+//			data_buf[1] = 1;
+//		}
 	}
 	else
 	{
@@ -564,16 +560,17 @@ u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 
-	u8 data_buf[2] = {0,0};
+	u8 data_buf[3] = {0};
 
 	if(len == 0)
 	{
 		if(resp == 1)
 		{
-			data_buf[0] = (u8)(((u16)SOFT_WARE_VRESION) >> 8);
-			data_buf[1] = (u8)SOFT_WARE_VRESION;
+			data_buf[0] = DeviceWorkMode;
+			data_buf[1] = (u8)(((u16)SOFT_WARE_VRESION) >> 8);
+			data_buf[2] = (u8)SOFT_WARE_VRESION;
 
-			out_len = PackNetData(cmd_code,data_buf,2,outbuf,id_type);
+			out_len = PackNetData(cmd_code,data_buf,3,outbuf,id_type);
 		}
 	}
 
@@ -636,7 +633,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_ty
 	u16 j = 0;
 	u16 k = 0;
 	u8 data_buf[2] = {0,0};
-	u8 time_group[1280];
+	u8 time_group[MAX_GROUP_NUM * TIME_RULE_LEN];
 	u16 crc16 = 0;
 
 	data_buf[0] = cmd_code;
@@ -657,7 +654,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_ty
 			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 1,(u8)(crc16 >> 8));
 			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 2,(u8)(crc16 & 0x00FF));
 
-			memset(time_group,0,1280);
+			memset(time_group,0,MAX_GROUP_NUM * TIME_RULE_LEN);
 
 			k = 0;
 
@@ -730,6 +727,58 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_ty
 	if(resp == 1)
 	{
 		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//获取调光策略
+u16 GetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u16 i = 0;
+	u16 j = 0;
+	u16 read_crc = 0;
+	u16 cal_crc = 0;
+	u8 data_buf[MAX_GROUP_NUM * TIME_RULE_LEN];
+	u8 read_success_buf_flag[MAX_GROUP_NUM];
+	u16 out_len = 0;
+
+	if(len == 0)
+	{
+		for(i = 0; i < MAX_GROUP_NUM; i ++)
+		{
+			for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + TIME_RULE_LEN; j ++)
+			{
+				data_buf[j] = AT24CXX_ReadOneByte(TIME_RULE_ADD + j);
+			}
+
+			cal_crc = GetCRC16(&data_buf[j - TIME_RULE_LEN],TIME_RULE_LEN - 2);
+			read_crc = (((u16)data_buf[j - 2]) << 8) + (u16)data_buf[j - 1];
+
+			if(cal_crc == read_crc)
+			{
+				read_success_buf_flag[i] = 1;
+			}
+		}
+
+		for(i = 0; i < MAX_GROUP_NUM; i ++)
+		{
+			if(read_success_buf_flag[i] == 1)
+			{
+				memcpy(data_buf + i * (TIME_RULE_LEN - 2),data_buf + i * TIME_RULE_LEN,TIME_RULE_LEN - 2);
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		out_len = i * (TIME_RULE_LEN - 2);
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackNetData(cmd_code,data_buf,out_len,outbuf,id_type);
 	}
 
 	return out_len;
@@ -960,6 +1009,8 @@ u16 SetPosition(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 
 	return out_len;
 }
+
+
 
 
 

@@ -677,6 +677,21 @@
               <FileType>1</FileType>
               <FilePath>..\MALLOC\malloc.c</FilePath>
             </File>
+            <File>
+              <FileName>fifo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\MALLOC\fifo.c</FilePath>
+            </File>
+            <File>
+              <FileName>memb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\MALLOC\memb.c</FilePath>
+            </File>
+            <File>
+              <FileName>ringbuf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\MALLOC\ringbuf.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

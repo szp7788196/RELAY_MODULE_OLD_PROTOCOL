@@ -73,7 +73,7 @@ void AppTaskCreate(void)
 	
 	xTaskCreate(vTaskHCI,
 				"vTaskHCI",
-				1024,
+				1536,
 				NULL,
 				6,
 				&xHandleTaskHCI);		//人机交互任务

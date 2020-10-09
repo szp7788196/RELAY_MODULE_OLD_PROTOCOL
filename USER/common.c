@@ -1143,7 +1143,7 @@ u8 ReadRegularTimeGroups(void)
 	u16 j = 0;
 	u16 read_crc = 0;
 	u16 cal_crc = 0;
-	u8 time_group[1280];
+	u8 time_group[MAX_GROUP_NUM * TIME_RULE_LEN];
 	u8 read_success_buf_flag[MAX_GROUP_NUM];
 
 	RegularTimeWeekDay = (pRegularTime)mymalloc(sizeof(RegularTime_S));
@@ -1166,7 +1166,7 @@ u8 ReadRegularTimeGroups(void)
 	RegularTimeWeekEnd->next = NULL;
 	RegularTimeHoliday->next = NULL;
 
-	memset(time_group,0,1280);
+	memset(time_group,0,MAX_GROUP_NUM * TIME_RULE_LEN);
 	memset(read_success_buf_flag,0,MAX_GROUP_NUM);
 
 	for(i = 0; i < MAX_GROUP_NUM; i ++)
@@ -1553,6 +1553,30 @@ void RemoveAllStrategy(void)
 
 		AT24CXX_WriteLenByte(TIME_RULE_ADD + TIME_RULE_LEN * i + 7,0x0000,2);
 	}
+}
+
+//获取当前各个继电器的开闭状态
+u16 GetCurrentRelaysState(u16 bit,u16 state)
+{
+	u8 i = 0;
+	static u16 relays_state;
+	
+	for(i = 0; i < CH_NUM; i ++)
+	{
+		if(bit & (1 << i))
+		{
+			if(state & (1 << i))
+			{
+				relays_state |= (1 << i);
+			}
+			else
+			{
+				relays_state &= ~(1 << i);
+			}
+		}
+	}
+	
+	return relays_state;
 }
 
 

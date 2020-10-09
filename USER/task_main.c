@@ -75,7 +75,7 @@ void vTaskMAIN(void *pvParameters)
 				HaveNewActionCommand = 1;
 			}
 		}
-		
+
 		xResult = xQueueReceive(xQueue_RelayState,
 							(void *)&relay_state,
 							(TickType_t)pdMS_TO_TICKS(1));
@@ -93,6 +93,8 @@ void vTaskMAIN(void *pvParameters)
 			MirrorOutPutControlState = OutPutControlState;
 			MirrorOutPutControlBit = OutPutControlBit;
 			HaveNewActionCommand = 0;
+			
+			RelaysState = GetCurrentRelaysState(OutPutControlBit,OutPutControlState);		//获取当前各个继电器的开闭状态
 
 			ControlAllRelayDelay(OutPutControlState,&OutPutControlBit,RelayActionINCL);
 		}
@@ -120,7 +122,7 @@ void vTaskMAIN(void *pvParameters)
 			__disable_fault_irq();						//重启指令
 			NVIC_SystemReset();
 		}
-		
+
 		delay_ms(10);
 	}
 }
@@ -286,7 +288,7 @@ void AutoLoopRegularTimeGroups(u16 *bit,u16 *state)
 	   RefreshStrategy == 1)
 	{
 		RefreshStrategy = 0;
-		
+
 		last_bit = current_bit;
 	    last_state = current_state;
 

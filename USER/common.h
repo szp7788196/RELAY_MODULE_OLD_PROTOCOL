@@ -66,7 +66,7 @@
 #define FIRMWARE_SIZE					FIRMWARE_BUCKUP_FLASH_BASE_ADD - FIRMWARE_RUN_FLASH_BASE_ADD
 
 
-#define SOFT_WARE_VRESION			101			//软件版本号
+#define SOFT_WARE_VRESION			102			//软件版本号
 
 #define DEBUG_LOG								//是否打印调试信息
 
@@ -534,6 +534,8 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type);
 u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time);
 u8 RegularTimeGroupSub(u8 number);
 void RemoveAllStrategy(void);
+
+u16 GetCurrentRelaysState(u16 bit,u16 state);
 
 
 
